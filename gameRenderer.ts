@@ -6,7 +6,6 @@ import {
 
 import { IGameRenderer } from './gameRenderer.interface';
 import { CharacterGalleryManager, TextureGalleryManager } from './gallery';
-import { setInterval, clearInterval } from 'timers';
 
 
 export class GameRenderer implements IGameRenderer {
