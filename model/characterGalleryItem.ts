@@ -1,15 +1,18 @@
 import { ICharacterGalleryItem } from './characterGalleryItem.interface';
 
 export class CharacterGalleryItem implements ICharacterGalleryItem {
+  name = '';
   modelPath = '';
   modelFileName = '';
-  modelType = 'babylon';
+  modelFileType = 'babylon';
   animations = {};
-
-  constructor(modelPath: string, modelFileName: string, modelType: string = 'babylon', animations = {}) {
-    this.modelPath = modelPath;
-    this.modelFileName = modelFileName;
-    this.modelType = modelType;
-    this.animations = animations;
+  animationOptions = {
+    animationSpeed: 0.8,
+    initialForwardSpeed: 0.02,
+    initialBackwardSpeed: 0.01,
+    speedIncreasePercent: 0.2,
+    maxForwardSpeed: 0.1,
+    maxBackwardSpeed: 0.04,
+    rotateSpeed: 0.03
   }
 }

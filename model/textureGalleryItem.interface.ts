@@ -4,5 +4,6 @@ export interface ITextureGalleryItem {
   hq: string;
   mq: string;
   lq: string;
-  loadedTexture: Texture;
+  texture: Texture;
+  textureLoaded: boolean;
 }

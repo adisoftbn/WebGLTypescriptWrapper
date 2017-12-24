@@ -111,7 +111,7 @@ export class TextureGalleryManager {
   public getTextureObjectByName(textureName: string) {
     return new Promise((resolve, reject) => {
       if (this._textures[textureName]) {
-        if (!this._textures[textureName].loadedTexture) {
+        if (!this._textures[textureName].textureLoaded && !this._textures[textureName].texture) {
           let textureUrl = null;
           if (this._gameRenderer.texturesQuality === 'hq') {
             textureUrl = `assets/textures/${this._textures[textureName].hq}`;
@@ -121,15 +121,27 @@ export class TextureGalleryManager {
             textureUrl = `assets/textures/${this._textures[textureName].lq}`;
           }
           console.log(textureUrl);
-          this._textures[textureName].loadedTexture = new BABYLON.Texture(textureUrl, this._gameRenderer.getScene());
+          this._textures[textureName].texture = new BABYLON.Texture(textureUrl, this._gameRenderer.getScene());
           const interval = setInterval(() => {
-            if (this._textures[textureName].loadedTexture.isReady()) {
+            if (this._textures[textureName].texture.isReady()) {
+              this._textures[textureName].textureLoaded = true;
               clearInterval(interval);
-              resolve(this._textures[textureName].loadedTexture);
+              resolve(this._textures[textureName].texture.clone());
             }
           }, 1);
         } else {
-          resolve(this._textures[textureName].loadedTexture);
+          if (this._textures[textureName].texture) {
+            const interval = setInterval(() => {
+              if (this._textures[textureName].texture.isReady()) {
+                clearInterval(interval);
+                console.log(textureName);
+                resolve(this._textures[textureName].texture.clone());
+              }
+            }, 1);
+          } else {
+            console.log(textureName);
+            resolve(this._textures[textureName].texture.clone());
+          }
         }
       } else {
         reject(`Cannot find texture ${textureName}!`);

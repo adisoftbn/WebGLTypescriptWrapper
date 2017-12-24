@@ -9,10 +9,15 @@ export class Character extends BaseModel {
   protected _userControl = false;
   protected _userControlKeyMapping: IUserControlKeyMapping = null;
   protected _networkingChannel: INetworkChannel = null;
+
+  protected _characterAnimationSpeed = 0.8;
+
   protected _characterSpeed = 0;
+  protected _characterSpeedIncreasePercent = 0.2;
   protected _characterInitialForwardSpeed = 0.02;
+  protected _characterInitialBackwardSpeed = 0.02;
   protected _characterMaxForwardSpeed = 0.1;
-  protected _characterBackwardSpeed = 0.04;
+  protected _characterMaxBackwardSpeed = 0.1;
   protected _characterRotateSpeed = 0.03;
 
   protected _modelLoaded = false;
@@ -23,7 +28,6 @@ export class Character extends BaseModel {
   protected _skeletons = [];
   protected _initialPosition: Vector3;
 
-  public animationSpeed = 0.8;
   private currentAnimation = null;
   public headHeight = 60;
   private keys = { left: 0, right: 0, forward: 0, backward: 0 };
@@ -80,6 +84,14 @@ export class Character extends BaseModel {
     const model = this._gameRenderer.getCharacterGallery().getModelByName(modelName);
     console.log(model);
     if (model) {
+      this._characterAnimationSpeed = model.animationOptions.animationSpeed;
+      this._characterInitialBackwardSpeed = model.animationOptions.initialForwardSpeed;
+      this._characterInitialBackwardSpeed = model.animationOptions.initialBackwardSpeed;
+      this._characterSpeedIncreasePercent = model.animationOptions.speedIncreasePercent;
+      this._characterMaxForwardSpeed = model.animationOptions.maxForwardSpeed;
+      this._characterMaxBackwardSpeed = model.animationOptions.maxBackwardSpeed;
+      this._characterRotateSpeed = model.animationOptions.rotateSpeed;
+
       this._animations = model.animations;
       const scene = this._gameRenderer.getScene();
       SceneLoader.ImportMesh('', model.modelPath, model.modelFileName, scene,
@@ -100,7 +112,7 @@ export class Character extends BaseModel {
         this._animations[animationName][0],
         this._animations[animationName][1],
         true,
-        this.animationSpeed
+        this._characterAnimationSpeed
       );
     }
   }
@@ -214,7 +226,7 @@ export class Character extends BaseModel {
       this._characterSpeed = this._characterInitialForwardSpeed;
     } else
       if (this._characterSpeed < this._characterMaxForwardSpeed) {
-        this._characterSpeed += this._characterSpeed * this._characterInitialForwardSpeed;
+        this._characterSpeed += this._characterSpeed * this._characterSpeedIncreasePercent;
         if (this._characterSpeed > this._characterMaxForwardSpeed) {
           this._characterSpeed = this._characterMaxForwardSpeed;
         }
@@ -222,8 +234,12 @@ export class Character extends BaseModel {
   }
 
   fixCharacterSpeedBackward() {
-    if (this._characterSpeed !== this._characterBackwardSpeed) {
-      this._characterSpeed = this._characterBackwardSpeed;
+    if (this._characterSpeed === 0) {
+      this._characterSpeed = this._characterInitialBackwardSpeed;
+    } else if (this._characterSpeed < this._characterMaxBackwardSpeed) {
+      this._characterSpeed += this._characterSpeed * this._characterSpeedIncreasePercent;
+    } else {
+      this._characterSpeed = this._characterMaxBackwardSpeed;
     }
   }
 
