@@ -18,11 +18,6 @@ export class GameRenderer implements IGameRenderer {
   private _characterGallery: CharacterGalleryManager;
   private _textureGallery: TextureGalleryManager;
 
-  private _ground = null;
-  private _groundSizeWidth = 50;
-  private _groundSizeHeight = 50;
-  private _groundMaterial = null;
-
   public texturesQuality = 'hq'; // hq/mq/lq
   public diffuseColor: Color3 = new Color3(0.8, 0.8, 0.8);
   public specularColor: Color3 = new Color3(0.3, 0.3, 0.3);
@@ -64,18 +59,6 @@ export class GameRenderer implements IGameRenderer {
     this._camera.minZ = 10.0;
 
 
-    this._ground = MeshBuilder.CreateGround('ground1', {
-      width: this._groundSizeWidth, height: this._groundSizeHeight, subdivisions: 2
-    }, this._scene);
-    this._groundMaterial = new StandardMaterial('ground', this._scene);
-    this._groundMaterial.diffuseColor = this.diffuseColor;
-    this._groundMaterial.specularColor = this.specularColor;
-    // this._groundMaterial.backFaceCulling = false;
-    this._ground.material = this._groundMaterial;
-    this._ground.receiveShadows = true;
-    if (this._physicsEnabled) {
-      this._ground.checkCollisions = true;
-    }
     this._shadowGenerator = new ShadowGenerator(2048, this._light);
     this._shadowGenerator.setDarkness(0.5);
     this._shadowGenerator.usePoissonSampling = true;
@@ -100,25 +83,6 @@ export class GameRenderer implements IGameRenderer {
 
   public getTextureGallery() {
     return this._textureGallery;
-  }
-
-  public setGroundSize(width, height) {
-    this._groundSizeWidth = width;
-    this._groundSizeHeight = height;
-  }
-
-  public setGroundTexture(textureUrl: string) {
-    this._ground.material.diffuseTexture = new Texture(textureUrl, this._scene);
-  }
-
-  public setGroundTextureFromGallery(textureName) {
-    this._textureGallery.getTextureObjectByName(textureName).then(texture => {
-      this._ground.material.diffuseTexture = texture;
-      const sizes = this._ground.material.diffuseTexture.getSize();
-      const ratio = sizes['width'] / sizes['height'];
-      this._ground.material.diffuseTexture.uScale = this._groundSizeWidth * ratio;
-      this._ground.material.diffuseTexture.vScale = this._groundSizeHeight / ratio;
-    });
   }
 
   public setCameraTarget(model, updateCameraPosition: boolean = false, cameraX: number = 0, cameraZ: number = 0) {

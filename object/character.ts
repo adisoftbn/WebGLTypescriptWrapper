@@ -34,15 +34,19 @@ export class Character extends BaseModel {
 
 
   constructor(gameRenderer: IGameRenderer, initialPosition: Vector3,
-    userControlKeyMapping?: IUserControlKeyMapping, networkingChannel?: INetworkChannel) {
+    userControlKeyMapping: IUserControlKeyMapping = null, networkingChannel: INetworkChannel = null) {
     super(gameRenderer);
     this._gameRenderer = gameRenderer;
     this._initialPosition = initialPosition;
     this._modelRoot = MeshBuilder.CreateBox('', { size: 0.001 }, this._gameRenderer.getScene());
+    this._modelRoot.position.x = this._initialPosition.x;
+    this._modelRoot.position.y = -0.02;
+    this._modelRoot.position.z = this._initialPosition.z;
     this._modelRoot.scaling = new Vector3(0.1, 0.1, 0.1);
     this._modelhead = MeshBuilder.CreateSphere('', { segments: 4, diameter: 0.01 }, this._gameRenderer.getScene());
     this._modelhead.parent = this._modelRoot;
-    this._modelhead.receiveShadows = true;
+    // this._modelhead.receiveShadows = true;
+
     this._gameRenderer.getShadowGenerator().getShadowMap().renderList.push(this._modelRoot);
 
     this._modelhead.position.y = this.headHeight;
@@ -82,7 +86,6 @@ export class Character extends BaseModel {
 
   public buildFromGallery(modelName, callback?: Function) {
     const model = this._gameRenderer.getCharacterGallery().getModelByName(modelName);
-    console.log(model);
     if (model) {
       this._characterAnimationSpeed = model.animationOptions.animationSpeed;
       this._characterInitialBackwardSpeed = model.animationOptions.initialForwardSpeed;
@@ -123,9 +126,7 @@ export class Character extends BaseModel {
         const scene = this._gameRenderer.getScene();
         this._skeletons = skeletons;
         this._model = newMeshes[0];
-        this._model.position.x = 1000;
         this._model.parent = this._modelRoot;
-        this._model.position = this._initialPosition;
         this._model.scaling = new Vector3(0.1, 0.1, 0.1);
         // this._model.receiveShadows = true;
         this._gameRenderer.getShadowGenerator().getShadowMap().renderList.push(this._model);
