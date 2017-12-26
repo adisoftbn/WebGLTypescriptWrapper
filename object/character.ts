@@ -1,11 +1,13 @@
-import { Vector3, SceneLoader, MeshBuilder } from 'babylonjs';
+import { Vector3, SceneLoader, MeshBuilder, Mesh } from 'babylonjs';
 
-import { IGameRenderer } from '../';
+import { GameRenderer, IRendererGraphicOptions, RendererGraphicOptions, ERendererShadowsQuality } from '../';
 import { BaseModel } from './baseModel';
 
 import { IUserControlKeyMapping, INetworkChannel } from '../model';
+import { frameRenderClock } from '../frameRenderClock';
 
 export class Character extends BaseModel {
+  protected _graphicsOptions: IRendererGraphicOptions;
   protected _userControl = false;
   protected _userControlKeyMapping: IUserControlKeyMapping = null;
   protected _networkingChannel: INetworkChannel = null;
@@ -13,6 +15,7 @@ export class Character extends BaseModel {
   protected _characterAnimationSpeed = 0.8;
 
   protected _characterSpeed = 0;
+  protected _characterSpeedMultiplier = 2;
   protected _characterSpeedIncreasePercent = 0.2;
   protected _characterInitialForwardSpeed = 0.02;
   protected _characterInitialBackwardSpeed = 0.02;
@@ -21,38 +24,65 @@ export class Character extends BaseModel {
   protected _characterRotateSpeed = 0.03;
 
   protected _modelLoaded = false;
-  protected _model = null;
-  protected _modelRoot = null;
-  protected _modelhead = null;
+  protected _model: Mesh = null;
+  protected _modelRoot: Mesh = null;
   protected _animations = {};
   protected _skeletons = [];
   protected _initialPosition: Vector3;
 
   private currentAnimation = null;
-  public headHeight = 60;
+
   private keys = { left: 0, right: 0, forward: 0, backward: 0 };
 
 
-  constructor(gameRenderer: IGameRenderer, initialPosition: Vector3,
-    userControlKeyMapping: IUserControlKeyMapping = null, networkingChannel: INetworkChannel = null) {
+  constructor(gameRenderer: GameRenderer, initialPosition: Vector3,
+    userControlKeyMapping: IUserControlKeyMapping = null, networkingChannel: INetworkChannel = null,
+    graphicsOptions?: IRendererGraphicOptions) {
     super(gameRenderer);
-    this._gameRenderer = gameRenderer;
+    this._graphicsOptions = (graphicsOptions ? graphicsOptions : new RendererGraphicOptions);
     this._initialPosition = initialPosition;
-    this._modelRoot = MeshBuilder.CreateBox('', { size: 0.001 }, this._gameRenderer.getScene());
+    this._modelRoot = MeshBuilder.CreateSphere('sphere', {
+      diameterX: 3, diameterY: 10, diameterZ: 3
+    }, this._gameRenderer.getScene());
     this._modelRoot.position.x = this._initialPosition.x;
-    this._modelRoot.position.y = -0.02;
+    this._modelRoot.position.y = 0.5;
     this._modelRoot.position.z = this._initialPosition.z;
     this._modelRoot.scaling = new Vector3(0.1, 0.1, 0.1);
-    this._modelhead = MeshBuilder.CreateSphere('', { segments: 4, diameter: 0.01 }, this._gameRenderer.getScene());
-    this._modelhead.parent = this._modelRoot;
-    // this._modelhead.receiveShadows = true;
 
-    this._gameRenderer.getShadowGenerator().getShadowMap().renderList.push(this._modelRoot);
+    this._modelRoot.material = new BABYLON.StandardMaterial('stairsmat', this._gameRenderer.getScene());
+    this._modelRoot.material.alpha = 0;
+    if (this._graphicsOptions.shadowsEnabled) {
+      this._gameRenderer.getShadowGenerator().getShadowMap().renderList.push(this._modelRoot);
+      if (
+        this._graphicsOptions.shadowsQuality === ERendererShadowsQuality.medium ||
+        this._graphicsOptions.shadowsQuality === ERendererShadowsQuality.high
+      ) {
+        this._gameRenderer.getShadowGenerator().addShadowCaster(this._modelRoot);
+      }
+    }
 
-    this._modelhead.position.y = this.headHeight;
+
     if (userControlKeyMapping) {
       this._userControl = true;
       this._userControlKeyMapping = userControlKeyMapping;
+      if (this._gameRenderer.isRealPhysicsCollisions()) {
+        this._modelRoot.physicsImpostor = new BABYLON.PhysicsImpostor(
+          this._modelRoot, BABYLON.PhysicsImpostor.SphereImpostor, { mass: 1, restitution: 0, friction: 0.1 },
+          this._gameRenderer.getScene()
+        );
+        this._modelRoot.physicsImpostor.executeNativeFunction(function (world, body) {
+          body.fixedRotation = true;
+          body.updateMassProperties();
+
+        });
+        // this._modelRoot.onCollide = function (collidedMesh) { console.log('I am colliding with something'); console.log(collidedMesh); }
+      } else {
+        this._modelRoot.rotationQuaternion = null;
+        this._modelRoot.ellipsoid = new BABYLON.Vector3(0.7, 0.7, 0.7);
+        this._modelRoot.ellipsoidOffset = new BABYLON.Vector3(0, 1.5, 0);
+        // this._modelRoot.applyGravity = true;
+        this._modelRoot.checkCollisions = true;
+      }
     }
     if (networkingChannel) {
       this._networkingChannel = networkingChannel;
@@ -69,8 +99,19 @@ export class Character extends BaseModel {
     return this._modelRoot;
   }
 
-  getModelHead() {
-    return this._modelhead;
+  public getPosition() {
+    if (this._modelLoaded) {
+      return {
+        x: this._model.position.x,
+        y: this._model.position.y,
+        z: this._model.position.z
+      }
+    }
+    return {
+      x: this._initialPosition.x,
+      y: 0,
+      z: this._initialPosition.y
+    }
   }
 
   public buildFromUrl(modelName: string, path: string, modelFileName: string, callback?: Function) {
@@ -126,31 +167,37 @@ export class Character extends BaseModel {
         const scene = this._gameRenderer.getScene();
         this._skeletons = skeletons;
         this._model = newMeshes[0];
+        this._model.position.y = -5.2;
         this._model.parent = this._modelRoot;
         this._model.scaling = new Vector3(0.1, 0.1, 0.1);
-        // this._model.receiveShadows = true;
         this._gameRenderer.getShadowGenerator().getShadowMap().renderList.push(this._model);
         this._gameRenderer.getShadowGenerator().addShadowCaster(this._model);
         this.switchToAnimation('stand');
-        // this._model.rotation.y = Math.PI;
-        // scene.beginAnimation(skeletons[0], 0, 500, true, 0.8);
         if (!this._modelLoaded) {
           this._modelLoaded = true;
           if (this._userControl) {
             window.addEventListener('keydown', (event) => {
               if (event.keyCode === this._userControlKeyMapping.leftKey) {
+                event.preventDefault();
+                event.stopPropagation();
                 this.keys.left = 1;
                 this.switchToAnimation('moveLeft');
               }
               if (event.keyCode === this._userControlKeyMapping.rightKey) {
+                event.preventDefault();
+                event.stopPropagation();
                 this.keys.right = 1;
                 this.switchToAnimation('moveRight');
               }
               if (event.keyCode === this._userControlKeyMapping.forwardKey) {
+                event.preventDefault();
+                event.stopPropagation();
                 this.keys.forward = 1;
                 this.switchToAnimation('run');
               }
               if (event.keyCode === this._userControlKeyMapping.backwardKey) {
+                event.preventDefault();
+                event.stopPropagation();
                 this.keys.backward = 1;
                 this.switchToAnimation('run');
               }
@@ -182,35 +229,49 @@ export class Character extends BaseModel {
               }
             });
             this._gameRenderer.getScene().registerBeforeRender(() => {
+              let delta = 0;
+              if (this.keys.forward || this.keys.backward || this.keys.right || this.keys.left) {
+                delta = frameRenderClock.getCachedDelta() / 20;
+              }
               if (this.keys.forward === 1) {
                 this.increaseCharacterSpeedForward();
-                const posX = Math.sin(this._modelRoot.rotation.y) * this._characterSpeed;
-                const posZ = Math.cos(this._modelRoot.rotation.y) * this._characterSpeed;
-                // console.log(posX, posZ);
-                // const cameraX = this._modelRoot.position.x - posX * 10;
-                // const cameraY = this._modelRoot.position.y - posZ * 10;
-                this._modelRoot.position.x += posX;
-                this._modelRoot.position.z += posZ;
-                // this._gameRenderer.setCameraTarget(this._modelRoot, true, cameraX, cameraY);
+                if (this._gameRenderer.isPhysicsEnabled()) {
+                  const velocity = BABYLON.Vector3.TransformNormal(
+                    new BABYLON.Vector3(0, 0, this._characterSpeed * this._characterSpeedMultiplier * delta),
+                    this._modelRoot.computeWorldMatrix()
+                  );
+                  this._modelRoot.moveWithCollisions(velocity);
+                  // console.log(Math.ceil(this._modelRoot.position.x) + ' ' + Math.ceil(this._modelRoot.position.z));
+                } else {
+                  const posX = Math.sin(this._modelRoot.rotation.y) * this._characterSpeed * this._characterSpeedMultiplier * delta;
+                  const posZ = Math.cos(this._modelRoot.rotation.y) * this._characterSpeed * this._characterSpeedMultiplier * delta;
+                  this._modelRoot.position.x += posX;
+                  this._modelRoot.position.z += posZ;
+                }
               } else if (this.keys.backward === 1) {
                 this.fixCharacterSpeedBackward();
-                const posX = Math.sin(this._modelRoot.rotation.y) * this._characterSpeed;
-                const posZ = Math.cos(this._modelRoot.rotation.y) * this._characterSpeed;
-                // console.log(posX, posZ);
-                // const cameraX = this._modelRoot.position.x - posX * 10;
-                // const cameraY = this._modelRoot.position.y - posZ * 10;
-                this._modelRoot.position.x -= posX;
-                this._modelRoot.position.z -= posZ;
-                /// this._gameRenderer.setCameraTarget(this._modelRoot, true, cameraX, cameraY);
+                if (this._gameRenderer.isPhysicsEnabled()) {
+                  const velocity = BABYLON.Vector3.TransformNormal(
+                    new BABYLON.Vector3(0, 0, this._characterSpeed * this._characterSpeedMultiplier * delta),
+                    this._modelRoot.computeWorldMatrix()
+                  );
+                  const newVelocity = velocity.negate();
+                  this._modelRoot.moveWithCollisions(newVelocity);
+                } else {
+                  const posX = Math.sin(this._modelRoot.rotation.y) * this._characterSpeed * this._characterSpeedMultiplier * delta;
+                  const posZ = Math.cos(this._modelRoot.rotation.y) * this._characterSpeed * this._characterSpeedMultiplier * delta;
+                  this._modelRoot.position.x -= posX;
+                  this._modelRoot.position.z -= posZ;
+                }
               }
               if (this.keys.forward === 0 && this.keys.backward === 0 && this._characterSpeed > 0) {
                 this._characterSpeed = 0;
               }
               if (this.keys.right === 1) {
-                this._modelRoot.rotation.y = this._modelRoot.rotation.y + this._characterRotateSpeed;
+                this._modelRoot.rotate(BABYLON.Axis.Y, this._characterRotateSpeed * delta, BABYLON.Space.LOCAL);
               }
               if (this.keys.left === 1) {
-                this._modelRoot.rotation.y = this._modelRoot.rotation.y - this._characterRotateSpeed
+                this._modelRoot.rotate(BABYLON.Axis.Y, -this._characterRotateSpeed * delta, BABYLON.Space.LOCAL);
               }
             });
           }
@@ -222,19 +283,18 @@ export class Character extends BaseModel {
     }
   }
 
-  increaseCharacterSpeedForward() {
+  private increaseCharacterSpeedForward() {
     if (this._characterSpeed === 0) {
       this._characterSpeed = this._characterInitialForwardSpeed;
-    } else
-      if (this._characterSpeed < this._characterMaxForwardSpeed) {
-        this._characterSpeed += this._characterSpeed * this._characterSpeedIncreasePercent;
-        if (this._characterSpeed > this._characterMaxForwardSpeed) {
-          this._characterSpeed = this._characterMaxForwardSpeed;
-        }
+    } else if (this._characterSpeed < this._characterMaxForwardSpeed) {
+      this._characterSpeed += this._characterSpeed * this._characterSpeedIncreasePercent;
+      if (this._characterSpeed > this._characterMaxForwardSpeed) {
+        this._characterSpeed = this._characterMaxForwardSpeed;
       }
+    }
   }
 
-  fixCharacterSpeedBackward() {
+  private fixCharacterSpeedBackward() {
     if (this._characterSpeed === 0) {
       this._characterSpeed = this._characterInitialBackwardSpeed;
     } else if (this._characterSpeed < this._characterMaxBackwardSpeed) {

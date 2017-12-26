@@ -1,9 +1,9 @@
 import { IBaseModel } from './baseModel.interface';
-import { IGameRenderer } from '../';
+import { GameRenderer } from '../';
 
 export class BaseModel implements IBaseModel {
   protected _gameRenderer = null;
-  constructor(gameRenderer: IGameRenderer) {
+  constructor(gameRenderer: GameRenderer) {
     this._gameRenderer = gameRenderer;
   }
 

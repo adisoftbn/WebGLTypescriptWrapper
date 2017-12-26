@@ -1,38 +1,15 @@
-import { IGameRenderer } from '../';
+import { GameRenderer } from '../';
 import { ICharacterGalleryItem, CharacterGalleryItem } from '../model/';
 
 export class CharacterGalleryManager {
-  private _gameRenderer: IGameRenderer;
-  private _modelsData = [
-    {
-      name: 'rabbit',
-      modelPath: 'assets/models/Rabbit/',
-      modelFileName: 'Rabbit.babylon',
-      modelFileType: 'babylon',
-      animations: {
-        stand: [0, 30],
-        run: [31, 54]
-      }
-    },
-    {
-      name: 'dude',
-      modelPath: 'assets/models/Dude/',
-      modelFileName: 'Dude.babylon',
-      modelFileType: 'babylon',
-      animations: {
-        stand: [0, 30],
-        run: [31, 54]
-      }
-    }
-  ];
+  private _gameRenderer: GameRenderer;
   private _models = {};
-  constructor(gameRenderer: IGameRenderer) {
+  constructor(gameRenderer: GameRenderer) {
     this._gameRenderer = gameRenderer;
-    this.initCharacterObjects();
   }
 
-  private initCharacterObjects() {
-    this._modelsData.forEach(model => {
+  public initCharacterObjects(charactersData) {
+    charactersData.forEach(model => {
       const newCharacterItem = new CharacterGalleryItem();
       newCharacterItem.name = model.name;
       newCharacterItem.modelPath = model.modelPath;

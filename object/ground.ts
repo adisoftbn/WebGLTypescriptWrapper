@@ -2,23 +2,42 @@ import { Vector3, StandardMaterial, MeshBuilder, Mesh, Vector4, Texture } from '
 
 
 import { BaseModel } from './baseModel';
-import { GameRenderer } from '../';
+import { GameRenderer, IRendererGraphicOptions, RendererGraphicOptions, ERendererShadowsQuality } from '../';
 
 export class Ground extends BaseModel {
+  protected _graphicsOptions: IRendererGraphicOptions;
   private _model = null;
   private _groundWidth = 50;
   private _groundHeight = 50;
   private _groundMaterial = null;
 
-  constructor(gameRenderer: GameRenderer, width: number, height: number, textureName: string = null) {
+  constructor(gameRenderer: GameRenderer, initialPosition: Vector3, width: number, height: number, textureName: string = null,
+    graphicsOptions?: IRendererGraphicOptions) {
     super(gameRenderer);
+    this._graphicsOptions = (graphicsOptions ? graphicsOptions : new RendererGraphicOptions);
     this._groundWidth = width;
     this._groundHeight = height;
-    this._model = MeshBuilder.CreateGround('ground1', { width, height, subdivisions: 2 }, this._gameRenderer.getScene());
-    this._model.receiveShadows = true;
+    this._model = BABYLON.MeshBuilder.CreateGround('ground1', { height: height, width: width }, this._gameRenderer.getScene());
+    this._model.position = initialPosition;
+    if (this._graphicsOptions.shadowsEnabled) {
+      this._model.receiveShadows = true;
+    }
 
     if (this._gameRenderer.isPhysicsEnabled()) {
-      this._model.checkCollisions = true;
+      if (this._gameRenderer.isRealPhysicsCollisions()) {
+        this._model.physicsImpostor = new BABYLON.PhysicsImpostor(
+          this._model, BABYLON.PhysicsImpostor.BoxImpostor, { mass: 0, restitution: 0, friction: 0.5 },
+          this._gameRenderer.getScene()
+        );
+      } else {
+        this._model.rotationQuaternion = null;
+        this._model.applyGravity = true;
+        this._model.checkCollisions = true;
+        this._model.isPickable = false;
+        this._model.useOctreeForCollisions = true;
+        const octree = this._gameRenderer.getScene().createOrUpdateSelectionOctree();
+        octree.dynamicContent.push(this._model);
+      }
     }
 
 
