@@ -170,8 +170,15 @@ export class Character extends BaseModel {
         this._model.position.y = -5.2;
         this._model.parent = this._modelRoot;
         this._model.scaling = new Vector3(0.1, 0.1, 0.1);
-        this._gameRenderer.getShadowGenerator().getShadowMap().renderList.push(this._model);
-        this._gameRenderer.getShadowGenerator().addShadowCaster(this._model);
+        if (this._graphicsOptions.shadowsEnabled) {
+          this._gameRenderer.getShadowGenerator().getShadowMap().renderList.push(this._model);
+          if (
+            this._graphicsOptions.shadowsQuality === ERendererShadowsQuality.medium ||
+            this._graphicsOptions.shadowsQuality === ERendererShadowsQuality.high
+          ) {
+            this._gameRenderer.getShadowGenerator().addShadowCaster(this._model);
+          }
+        }
         this.switchToAnimation('stand');
         if (!this._modelLoaded) {
           this._modelLoaded = true;

@@ -79,7 +79,6 @@ export class Cube extends BaseModel {
     }
     if (this._gameRenderer.isPhysicsEnabled()) {
       if (this._gameRenderer.isRealPhysicsCollisions()) {
-        this._gameRenderer.getShadowGenerator().addShadowCaster(this._model);
         this._model.physicsImpostor = new BABYLON.PhysicsImpostor(
           this._model, BABYLON.PhysicsImpostor.BoxImpostor, { mass: 0, restitution: 0 },
           this._gameRenderer.getScene()

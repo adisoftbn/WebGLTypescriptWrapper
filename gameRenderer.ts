@@ -18,7 +18,7 @@ export enum ERendererShadowsQuality {
 
 export interface IRendererGraphicOptions {
   shadowsEnabled: boolean;
-  shadowsQuality: ERendererShadowsQuality;
+  shadowsQuality?: ERendererShadowsQuality;
 }
 
 export class RendererGraphicOptions implements IRendererGraphicOptions {
