@@ -7,10 +7,7 @@ export interface IGameRenderer {
   createScene();
   getScene(): Scene;
   getCamera();
-
   getShadowGenerator();
   getCharacterGallery();
-
   animate();
-
 }

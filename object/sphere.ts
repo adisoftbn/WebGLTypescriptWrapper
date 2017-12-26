@@ -1,6 +1,6 @@
 import { Vector3, StandardMaterial, MeshBuilder, Mesh, Vector4, Texture } from 'babylonjs';
 
-import { GameRenderer, IRendererGraphicOptions, RendererGraphicOptions, ERendererShadowsQuality } from '../';
+import { GameRenderer, IRendererGraphicOptions, RendererGraphicOptions, ERendererShadowQuality } from '../';
 import { BaseModel } from './baseModel';
 
 export class Sphere extends BaseModel {
@@ -32,11 +32,11 @@ export class Sphere extends BaseModel {
 
     this._model.position = this._initialPosition;
     this._model.material = this._modelMaterial;
-    if (this._graphicsOptions.shadowsEnabled) {
+    if (this._graphicsOptions.shadowsEnabled && this._gameRenderer.getShadowGenerator()) {
       this._gameRenderer.getShadowGenerator().getShadowMap().renderList.push(this._model);
       if (
-        this._graphicsOptions.shadowsQuality === ERendererShadowsQuality.medium ||
-        this._graphicsOptions.shadowsQuality === ERendererShadowsQuality.high
+        this._graphicsOptions.shadowQuality === ERendererShadowQuality.medium ||
+        this._graphicsOptions.shadowQuality === ERendererShadowQuality.high
       ) {
         this._gameRenderer.getShadowGenerator().addShadowCaster(this._model);
       }

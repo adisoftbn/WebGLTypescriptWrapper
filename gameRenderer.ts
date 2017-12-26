@@ -5,11 +5,10 @@ import {
 
 import { IGameRenderer } from './gameRenderer.interface';
 import { CharacterGalleryManager, TextureGalleryManager } from './gallery';
-import 'assets/js/babylonjs.scene-fps';
 
 import { frameRenderClock } from './frameRenderClock';
 
-export enum ERendererShadowsQuality {
+export enum ERendererShadowQuality {
   low = 'LOW',
   medium = 'MEDIUM',
   high = 'HIGH',
@@ -18,12 +17,12 @@ export enum ERendererShadowsQuality {
 
 export interface IRendererGraphicOptions {
   shadowsEnabled: boolean;
-  shadowsQuality?: ERendererShadowsQuality;
+  shadowQuality?: ERendererShadowQuality;
 }
 
 export class RendererGraphicOptions implements IRendererGraphicOptions {
   shadowsEnabled: true;
-  shadowsQuality: ERendererShadowsQuality.medium;
+  shadowQuality: ERendererShadowQuality.medium;
 }
 
 export class GameRenderer implements IGameRenderer {
@@ -43,9 +42,8 @@ export class GameRenderer implements IGameRenderer {
   public ambientColor: Color3 = new Color3(0.5, 0.5, 0.5);
 
   protected _physicsEnabled = true;
-  protected _gravity = -9.81;
   protected _realPhysicsCollisions = true;
-  // protected _gravity = -1.81;
+  protected _gravity = -9.81;
 
   constructor(canvasElement: string,
     graphicsOptions?: IRendererGraphicOptions) {
@@ -71,7 +69,8 @@ export class GameRenderer implements IGameRenderer {
 
   public createScene() {
     this._scene = new Scene(this._engine);
-    (this._scene as any).showFps();
+    this.showFps();
+    // (this._scene as any).showFps();
     this._scene.ambientColor = this.ambientColor;
 
     this._light = new PointLight('light1', new Vector3(0, 30, -30), this._scene);
@@ -91,11 +90,16 @@ export class GameRenderer implements IGameRenderer {
 
     this._scene.shadowsEnabled = this._graphicsOptions.shadowsEnabled;
     if (this._graphicsOptions.shadowsEnabled) {
-      this._shadowGenerator = new ShadowGenerator(1024, this._light);
+      const shadowMapSize = (
+        this._graphicsOptions.shadowQuality === ERendererShadowQuality.medium ?
+          1024 :
+          (this._graphicsOptions.shadowQuality === ERendererShadowQuality.high ? 2048 : 512)
+      );
+      this._shadowGenerator = new ShadowGenerator(shadowMapSize, this._light);
       this._shadowGenerator.setDarkness(0.5);
       if (
-        this._graphicsOptions.shadowsQuality === ERendererShadowsQuality.medium ||
-        this._graphicsOptions.shadowsQuality === ERendererShadowsQuality.high
+        this._graphicsOptions.shadowQuality === ERendererShadowQuality.medium ||
+        this._graphicsOptions.shadowQuality === ERendererShadowQuality.high
       ) {
         this._shadowGenerator.usePoissonSampling = true;
         this._shadowGenerator.bias = 0;
@@ -129,15 +133,25 @@ export class GameRenderer implements IGameRenderer {
   }
 
   public animate() {
-    // run the render loop
     this._engine.runRenderLoop(() => {
       frameRenderClock.getDelta();
       this._scene.render();
     });
 
-    // the canvas/window resize event handler
     window.addEventListener('resize', () => {
       this._engine.resize();
     });
+  }
+
+  public showFps() {
+    const ioSpeed = 300;
+    const fpsWrapperDiv = document.createElement('div');
+    fpsWrapperDiv.setAttribute('id', 'fps-block');
+    fpsWrapperDiv.setAttribute('class', 'babylonjs-fps');
+
+    document.body.appendChild(fpsWrapperDiv);
+    setInterval(() => {
+      fpsWrapperDiv.innerHTML = this._engine.getFps().toFixed() + ' fps';
+    }, 1000 / ioSpeed);
   }
 }

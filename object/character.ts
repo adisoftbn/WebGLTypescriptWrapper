@@ -1,9 +1,9 @@
 import { Vector3, SceneLoader, MeshBuilder, Mesh } from 'babylonjs';
 
-import { GameRenderer, IRendererGraphicOptions, RendererGraphicOptions, ERendererShadowsQuality } from '../';
+import { GameRenderer, IRendererGraphicOptions, RendererGraphicOptions, ERendererShadowQuality } from '../';
 import { BaseModel } from './baseModel';
 
-import { IUserControlKeyMapping, INetworkChannel } from '../model';
+import { IUserControlKeyMapping, IUserControlAlternateKeys, INetworkChannel } from '../model';
 import { frameRenderClock } from '../frameRenderClock';
 
 export class Character extends BaseModel {
@@ -34,6 +34,8 @@ export class Character extends BaseModel {
 
   private keys = { left: 0, right: 0, forward: 0, backward: 0 };
 
+  protected _keyPressEvents: IUserControlAlternateKeys[] = [];
+
 
   constructor(gameRenderer: GameRenderer, initialPosition: Vector3,
     userControlKeyMapping: IUserControlKeyMapping = null, networkingChannel: INetworkChannel = null,
@@ -51,11 +53,11 @@ export class Character extends BaseModel {
 
     this._modelRoot.material = new BABYLON.StandardMaterial('stairsmat', this._gameRenderer.getScene());
     this._modelRoot.material.alpha = 0;
-    if (this._graphicsOptions.shadowsEnabled) {
+    if (this._graphicsOptions.shadowsEnabled && this._gameRenderer.getShadowGenerator()) {
       this._gameRenderer.getShadowGenerator().getShadowMap().renderList.push(this._modelRoot);
       if (
-        this._graphicsOptions.shadowsQuality === ERendererShadowsQuality.medium ||
-        this._graphicsOptions.shadowsQuality === ERendererShadowsQuality.high
+        this._graphicsOptions.shadowQuality === ERendererShadowQuality.medium ||
+        this._graphicsOptions.shadowQuality === ERendererShadowQuality.high
       ) {
         this._gameRenderer.getShadowGenerator().addShadowCaster(this._modelRoot);
       }
@@ -73,8 +75,12 @@ export class Character extends BaseModel {
         this._modelRoot.physicsImpostor.executeNativeFunction(function (world, body) {
           body.fixedRotation = true;
           body.updateMassProperties();
-
         });
+        if (this._userControlKeyMapping.alternateEvents) {
+          this._userControlKeyMapping.alternateEvents.forEach(keyEvent => {
+            this._keyPressEvents[keyEvent.key] = keyEvent;
+          });
+        }
         // this._modelRoot.onCollide = function (collidedMesh) { console.log('I am colliding with something'); console.log(collidedMesh); }
       } else {
         this._modelRoot.rotationQuaternion = null;
@@ -102,9 +108,9 @@ export class Character extends BaseModel {
   public getPosition() {
     if (this._modelLoaded) {
       return {
-        x: this._model.position.x,
-        y: this._model.position.y,
-        z: this._model.position.z
+        x: this._modelRoot.position.x,
+        y: this._modelRoot.position.y,
+        z: this._modelRoot.position.z
       }
     }
     return {
@@ -173,8 +179,8 @@ export class Character extends BaseModel {
         if (this._graphicsOptions.shadowsEnabled) {
           this._gameRenderer.getShadowGenerator().getShadowMap().renderList.push(this._model);
           if (
-            this._graphicsOptions.shadowsQuality === ERendererShadowsQuality.medium ||
-            this._graphicsOptions.shadowsQuality === ERendererShadowsQuality.high
+            this._graphicsOptions.shadowQuality === ERendererShadowQuality.medium ||
+            this._graphicsOptions.shadowQuality === ERendererShadowQuality.high
           ) {
             this._gameRenderer.getShadowGenerator().addShadowCaster(this._model);
           }
@@ -183,6 +189,13 @@ export class Character extends BaseModel {
         if (!this._modelLoaded) {
           this._modelLoaded = true;
           if (this._userControl) {
+            window.addEventListener('keypress', (event) => {
+              if (this._keyPressEvents[event.keyCode]) {
+                event.preventDefault();
+                event.stopPropagation();
+                this._keyPressEvents[event.keyCode].callback();
+              }
+            });
             window.addEventListener('keydown', (event) => {
               if (event.keyCode === this._userControlKeyMapping.leftKey) {
                 event.preventDefault();

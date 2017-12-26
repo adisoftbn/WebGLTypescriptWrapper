@@ -2,7 +2,7 @@ import { Vector3, StandardMaterial, MeshBuilder, Mesh, Vector4, Texture } from '
 
 
 import { BaseModel } from './baseModel';
-import { GameRenderer, IRendererGraphicOptions, RendererGraphicOptions, ERendererShadowsQuality } from '../';
+import { GameRenderer, IRendererGraphicOptions, RendererGraphicOptions, ERendererShadowQuality } from '../';
 
 export class Ground extends BaseModel {
   protected _graphicsOptions: IRendererGraphicOptions;
