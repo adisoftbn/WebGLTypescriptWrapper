@@ -19,7 +19,7 @@ export class Ground extends BaseModel {
     this._groundHeight = height;
     this._model = BABYLON.MeshBuilder.CreateGround('ground1', { height: height, width: width }, this._gameRenderer.getScene());
     this._model.position = initialPosition;
-    if (this._graphicsOptions.shadowsEnabled) {
+    if (this._graphicsOptions.shadowEnabled) {
       this._model.receiveShadows = true;
     }
 

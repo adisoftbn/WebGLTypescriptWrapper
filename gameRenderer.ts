@@ -16,12 +16,12 @@ export enum ERendererShadowQuality {
 
 
 export interface IRendererGraphicOptions {
-  shadowsEnabled: boolean;
+  shadowEnabled: boolean;
   shadowQuality?: ERendererShadowQuality;
 }
 
 export class RendererGraphicOptions implements IRendererGraphicOptions {
-  shadowsEnabled: true;
+  shadowEnabled: true;
   shadowQuality: ERendererShadowQuality.medium;
 }
 
@@ -88,8 +88,8 @@ export class GameRenderer implements IGameRenderer {
       }
     }
 
-    this._scene.shadowsEnabled = this._graphicsOptions.shadowsEnabled;
-    if (this._graphicsOptions.shadowsEnabled) {
+    this._scene.shadowsEnabled = this._graphicsOptions.shadowEnabled;
+    if (this._graphicsOptions.shadowEnabled) {
       const shadowMapSize = (
         this._graphicsOptions.shadowQuality === ERendererShadowQuality.medium ?
           1024 :

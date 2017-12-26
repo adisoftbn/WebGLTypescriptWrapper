@@ -32,7 +32,7 @@ export class Sphere extends BaseModel {
 
     this._model.position = this._initialPosition;
     this._model.material = this._modelMaterial;
-    if (this._graphicsOptions.shadowsEnabled && this._gameRenderer.getShadowGenerator()) {
+    if (this._graphicsOptions.shadowEnabled && this._gameRenderer.getShadowGenerator()) {
       this._gameRenderer.getShadowGenerator().getShadowMap().renderList.push(this._model);
       if (
         this._graphicsOptions.shadowQuality === ERendererShadowQuality.medium ||

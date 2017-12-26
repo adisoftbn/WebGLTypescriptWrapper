@@ -53,7 +53,7 @@ export class Character extends BaseModel {
 
     this._modelRoot.material = new BABYLON.StandardMaterial('stairsmat', this._gameRenderer.getScene());
     this._modelRoot.material.alpha = 0;
-    if (this._graphicsOptions.shadowsEnabled && this._gameRenderer.getShadowGenerator()) {
+    if (this._graphicsOptions.shadowEnabled && this._gameRenderer.getShadowGenerator()) {
       this._gameRenderer.getShadowGenerator().getShadowMap().renderList.push(this._modelRoot);
       if (
         this._graphicsOptions.shadowQuality === ERendererShadowQuality.medium ||
@@ -176,7 +176,7 @@ export class Character extends BaseModel {
         this._model.position.y = -5.2;
         this._model.parent = this._modelRoot;
         this._model.scaling = new Vector3(0.1, 0.1, 0.1);
-        if (this._graphicsOptions.shadowsEnabled) {
+        if (this._graphicsOptions.shadowEnabled) {
           this._gameRenderer.getShadowGenerator().getShadowMap().renderList.push(this._model);
           if (
             this._graphicsOptions.shadowQuality === ERendererShadowQuality.medium ||
