@@ -4,3 +4,5 @@ export * from './character';
 export * from './cube';
 export * from './ground';
 export * from './sphere';
+export * from './torus';
+export * from './particleEmitter';

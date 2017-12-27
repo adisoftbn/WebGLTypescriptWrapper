@@ -179,6 +179,7 @@ export class Character extends BaseModel {
         if (this._graphicsOptions.shadowEnabled) {
           this._gameRenderer.getShadowGenerator().getShadowMap().renderList.push(this._model);
           if (
+            this._graphicsOptions.shadowQuality === ERendererShadowQuality.low ||
             this._graphicsOptions.shadowQuality === ERendererShadowQuality.medium ||
             this._graphicsOptions.shadowQuality === ERendererShadowQuality.high
           ) {

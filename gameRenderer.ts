@@ -21,8 +21,8 @@ export interface IRendererGraphicOptions {
 }
 
 export class RendererGraphicOptions implements IRendererGraphicOptions {
-  shadowEnabled: true;
-  shadowQuality: ERendererShadowQuality.medium;
+  shadowEnabled: false;
+  shadowQuality: ERendererShadowQuality.low;
 }
 
 export class GameRenderer implements IGameRenderer {
@@ -73,7 +73,7 @@ export class GameRenderer implements IGameRenderer {
     // (this._scene as any).showFps();
     this._scene.ambientColor = this.ambientColor;
 
-    this._light = new PointLight('light1', new Vector3(0, 30, -30), this._scene);
+    this._light = new PointLight('light1', new Vector3(0, 20, -20), this._scene);
     this._light.intensity = 2;
     this._camera = new FreeCamera('camera1', new Vector3(0, 0, -10), this._scene);
     this._camera.minZ = 10.0;
@@ -92,18 +92,18 @@ export class GameRenderer implements IGameRenderer {
     if (this._graphicsOptions.shadowEnabled) {
       const shadowMapSize = (
         this._graphicsOptions.shadowQuality === ERendererShadowQuality.medium ?
-          1024 :
-          (this._graphicsOptions.shadowQuality === ERendererShadowQuality.high ? 2048 : 512)
+          2048 :
+          (this._graphicsOptions.shadowQuality === ERendererShadowQuality.high ? 4096 : 1024)
       );
       this._shadowGenerator = new ShadowGenerator(shadowMapSize, this._light);
       this._shadowGenerator.setDarkness(0.5);
-      if (
-        this._graphicsOptions.shadowQuality === ERendererShadowQuality.medium ||
-        this._graphicsOptions.shadowQuality === ERendererShadowQuality.high
-      ) {
+      if (this._graphicsOptions.shadowQuality === ERendererShadowQuality.high) {
         this._shadowGenerator.usePoissonSampling = true;
         this._shadowGenerator.bias = 0;
         this._shadowGenerator.useBlurExponentialShadowMap = true;
+      } else if (this._graphicsOptions.shadowQuality === ERendererShadowQuality.medium) {
+        this._shadowGenerator.usePoissonSampling = true;
+        this._shadowGenerator.bias = 0;
       }
     }
   }
