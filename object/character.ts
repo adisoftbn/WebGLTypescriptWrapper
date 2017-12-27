@@ -69,7 +69,7 @@ export class Character extends BaseModel {
       this._userControlKeyMapping = userControlKeyMapping;
       if (this._gameRenderer.isRealPhysicsCollisions()) {
         this._modelRoot.physicsImpostor = new BABYLON.PhysicsImpostor(
-          this._modelRoot, BABYLON.PhysicsImpostor.SphereImpostor, { mass: 1, restitution: 0, friction: 0.1 },
+          this._modelRoot, BABYLON.PhysicsImpostor.SphereImpostor, { mass: 50, restitution: 0, friction: 0.1 },
           this._gameRenderer.getScene()
         );
         this._modelRoot.physicsImpostor.executeNativeFunction(function (world, body) {
