@@ -9,5 +9,4 @@ export interface IGameRenderer {
   getCamera();
   getShadowGenerator();
   getCharacterGallery();
-  animate();
 }

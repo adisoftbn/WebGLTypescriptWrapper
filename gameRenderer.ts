@@ -45,6 +45,8 @@ export class GameRenderer implements IGameRenderer {
   protected _realPhysicsCollisions = true;
   protected _gravity = -9.81;
 
+  protected _gameMode = true;
+
   constructor(canvasElement: string,
     graphicsOptions?: IRendererGraphicOptions) {
     this._canvas = <HTMLCanvasElement>document.getElementById(canvasElement);
@@ -53,6 +55,37 @@ export class GameRenderer implements IGameRenderer {
     this._engine.enableOfflineSupport = false;
     this._characterGallery = new CharacterGalleryManager(this);
     this._textureGallery = new TextureGalleryManager(this);
+    window.addEventListener('resize', () => {
+      this._engine.resize();
+    });
+
+  }
+  public enterGameMode() {
+    if (!this._gameMode) {
+      this._gameMode = true;
+      this._engine.runRenderLoop(() => {
+        frameRenderClock.getDelta();
+        this._scene.render();
+        console.log(2);
+        if (!this._gameMode) {
+          this._engine.stopRenderLoop();
+        }
+      });
+    }
+  }
+
+  public enterMenuMode() {
+    if (this._gameMode) {
+      this._gameMode = false;
+      const interval = setInterval(() => {
+        frameRenderClock.getDelta();
+        this._scene.render();
+        if (this._gameMode) {
+          clearInterval(interval);
+        }
+        console.log(1);
+      }, 700);
+    }
   }
 
   public isPhysicsEnabled() {
@@ -130,17 +163,6 @@ export class GameRenderer implements IGameRenderer {
 
   public setCameraTarget(model, updateCameraPosition: boolean = false, cameraX: number = 0, cameraZ: number = 0) {
     this._camera.lockedTarget = model;
-  }
-
-  public animate() {
-    this._engine.runRenderLoop(() => {
-      frameRenderClock.getDelta();
-      this._scene.render();
-    });
-
-    window.addEventListener('resize', () => {
-      this._engine.resize();
-    });
   }
 
   public showFps() {
