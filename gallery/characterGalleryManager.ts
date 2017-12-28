@@ -16,6 +16,7 @@ export class CharacterGalleryManager {
       newCharacterItem.modelFileName = model.modelFileName;
       newCharacterItem.modelFileType = model.modelFileType;
       newCharacterItem.animations = model.animations;
+      newCharacterItem.transform = model.transform;
       this._models[model.name] = newCharacterItem;
     });
   }

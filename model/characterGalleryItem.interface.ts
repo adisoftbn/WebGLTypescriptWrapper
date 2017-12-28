@@ -8,6 +8,12 @@ export interface ICharacterAnimationOptions {
   rotateSpeed: number;
 }
 
+export interface ICharacterTransform {
+  scale: number[];
+  position: number[];
+  rotate: number[];
+}
+
 export interface ICharacterGalleryItem {
   name: string;
   modelPath: string;
@@ -15,4 +21,5 @@ export interface ICharacterGalleryItem {
   modelFileType: string;
   animations: any;
   animationOptions: ICharacterAnimationOptions;
+  transform: ICharacterTransform;
 }

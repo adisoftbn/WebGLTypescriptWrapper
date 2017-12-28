@@ -3,8 +3,19 @@ import { Vector3, SceneLoader, MeshBuilder, Mesh } from 'babylonjs';
 import { GameRenderer, IRendererGraphicOptions, RendererGraphicOptions, ERendererShadowQuality } from '../';
 import { BaseModel } from './baseModel';
 
-import { IUserControlKeyMapping, IUserControlAlternateKeys, INetworkChannel } from '../model';
+import { IUserControlKeyMapping, IUserControlAlternateKeys, INetworkChannel, ICharacterGalleryItem } from '../model';
 import { frameRenderClock } from '../frameRenderClock';
+
+export enum ECharacterAnimation {
+  idle = 'idle',
+  walk = 'walk',
+  run = 'run',
+  moveLeft = 'moveLeft',
+  moveRight = 'moveRight',
+  die = 'die',
+  hitReceived = 'hitReceived',
+  attack = 'attack'
+}
 
 export class Character extends BaseModel {
   protected _graphicsOptions: IRendererGraphicOptions;
@@ -30,7 +41,10 @@ export class Character extends BaseModel {
   protected _skeletons = [];
   protected _initialPosition: Vector3;
 
-  private currentAnimation = null;
+  private currentAnimation: ECharacterAnimation = null;
+  private currentAnimationSpeedRatio = 1;
+  private currentAnimationTable = null;
+  private killed = false;
 
   private keys = { left: 0, right: 0, forward: 0, backward: 0 };
 
@@ -132,21 +146,21 @@ export class Character extends BaseModel {
   }
 
   public buildFromGallery(modelName, callback?: Function) {
-    const model = this._gameRenderer.getCharacterGallery().getModelByName(modelName);
-    if (model) {
-      this._characterAnimationSpeed = model.animationOptions.animationSpeed;
-      this._characterInitialBackwardSpeed = model.animationOptions.initialForwardSpeed;
-      this._characterInitialBackwardSpeed = model.animationOptions.initialBackwardSpeed;
-      this._characterSpeedIncreasePercent = model.animationOptions.speedIncreasePercent;
-      this._characterMaxForwardSpeed = model.animationOptions.maxForwardSpeed;
-      this._characterMaxBackwardSpeed = model.animationOptions.maxBackwardSpeed;
-      this._characterRotateSpeed = model.animationOptions.rotateSpeed;
+    const character = this._gameRenderer.getCharacterGallery().getModelByName(modelName);
+    if (character) {
+      this._characterAnimationSpeed = character.animationOptions.animationSpeed;
+      this._characterInitialBackwardSpeed = character.animationOptions.initialForwardSpeed;
+      this._characterInitialBackwardSpeed = character.animationOptions.initialBackwardSpeed;
+      this._characterSpeedIncreasePercent = character.animationOptions.speedIncreasePercent;
+      this._characterMaxForwardSpeed = character.animationOptions.maxForwardSpeed;
+      this._characterMaxBackwardSpeed = character.animationOptions.maxBackwardSpeed;
+      this._characterRotateSpeed = character.animationOptions.rotateSpeed;
 
-      this._animations = model.animations;
+      this._animations = character.animations;
       const scene = this._gameRenderer.getScene();
-      SceneLoader.ImportMesh('', model.modelPath, model.modelFileName, scene,
+      SceneLoader.ImportMesh('', character.modelPath, character.modelFileName, scene,
         (newMeshes, particleSystems, skeletons) => {
-          this.importMeshSuccess(newMeshes, particleSystems, skeletons);
+          this.importMeshSuccess(newMeshes, particleSystems, skeletons, character);
           if (callback) {
             callback();
           }
@@ -154,28 +168,59 @@ export class Character extends BaseModel {
     }
   }
 
-  switchToAnimation(animationName) {
+  switchToAnimation(animationName: ECharacterAnimation, speedRatio: number = 0.8, loop = true, callback: Function = null) {
     if (this.currentAnimation !== animationName && this._animations[animationName]) {
       this.currentAnimation = animationName;
-      this._gameRenderer.getScene().beginAnimation(
+      this.currentAnimationSpeedRatio = speedRatio;
+      // this._model.beginAnimation()
+      this.currentAnimationTable = this._gameRenderer.getScene().beginAnimation(
         this._skeletons[0],
         this._animations[animationName][0],
         this._animations[animationName][1],
-        true,
-        this._characterAnimationSpeed
+        loop,
+        this._characterAnimationSpeed,
+        callback
       );
+    } else { // if (this.currentAnimationSpeedRatio !== speedRatio) {
+      this.currentAnimationTable.speedRatio = speedRatio;
+      this.currentAnimationSpeedRatio = speedRatio;
     }
   }
 
-  private importMeshSuccess(newMeshes, particleSystems, skeletons) {
+  getCurrentSpeed() {
+    return 1 + ((this._characterSpeed / this._characterMaxBackwardSpeed) * 0.1);
+  }
+
+  private importMeshSuccess(newMeshes, particleSystems, skeletons, character: ICharacterGalleryItem = null) {
     try {
       if (newMeshes.length > 0) {
         const scene = this._gameRenderer.getScene();
         this._skeletons = skeletons;
         this._model = newMeshes[0];
-        this._model.position.y = -5.2;
         this._model.parent = this._modelRoot;
-        this._model.scaling = new Vector3(0.1, 0.1, 0.1);
+
+        if (character && character.transform.rotate) {
+          if (character.transform.rotate[0] !== 0) {
+            this._model.rotate(BABYLON.Axis.X, Math.PI * (character.transform.rotate[0] / 180), BABYLON.Space.LOCAL);
+          }
+          if (character.transform.rotate[1] !== 0) {
+            this._model.rotate(BABYLON.Axis.Y, Math.PI * (character.transform.rotate[1] / 180), BABYLON.Space.LOCAL);
+          }
+          if (character.transform.rotate[2] !== 0) {
+            this._model.rotate(BABYLON.Axis.Z, Math.PI * (character.transform.rotate[2] / 180), BABYLON.Space.LOCAL);
+          }
+        }
+
+        if (character && character.transform.position) {
+          this._model.position.set(character.transform.position[0], character.transform.position[1], character.transform.position[2]);
+        } else {
+          this._model.position.y = -5.2;
+        }
+        if (character && character.transform.scale) {
+          this._model.scaling = new Vector3(character.transform.scale[0], character.transform.scale[1], character.transform.scale[2]);
+        } else {
+          this._model.scaling = new Vector3(0.1, 0.1, 0.1);
+        }
         if (this._graphicsOptions.shadowEnabled) {
           this._gameRenderer.getShadowGenerator().getShadowMap().renderList.push(this._model);
           if (
@@ -186,11 +231,14 @@ export class Character extends BaseModel {
             this._gameRenderer.getShadowGenerator().addShadowCaster(this._model);
           }
         }
-        this.switchToAnimation('stand');
+        this.switchToAnimation(ECharacterAnimation.idle);
         if (!this._modelLoaded) {
           this._modelLoaded = true;
-          if (this._userControl) {
+          if (this._userControl && !this.killed) {
             window.addEventListener('keypress', (event) => {
+              if (this.killed) {
+                return;
+              }
               if (this._keyPressEvents[event.keyCode]) {
                 event.preventDefault();
                 event.stopPropagation();
@@ -198,58 +246,75 @@ export class Character extends BaseModel {
               }
             });
             window.addEventListener('keydown', (event) => {
+              if (this.killed) {
+                return;
+              }
               if (event.keyCode === this._userControlKeyMapping.leftKey) {
                 event.preventDefault();
                 event.stopPropagation();
                 this.keys.left = 1;
-                this.switchToAnimation('moveLeft');
+                /* if (!this.keys.forward || this.keys.backward) {
+                  this.switchToAnimation(ECharacterAnimation.idle);
+                } else {
+                  this.switchToAnimation(ECharacterAnimation.moveLeft);
+                }*/
               }
               if (event.keyCode === this._userControlKeyMapping.rightKey) {
                 event.preventDefault();
                 event.stopPropagation();
                 this.keys.right = 1;
-                this.switchToAnimation('moveRight');
+                /* if (!this.keys.forward || this.keys.backward) {
+                  this.switchToAnimation(ECharacterAnimation.idle);
+                } else {
+                  this.switchToAnimation(ECharacterAnimation.moveRight);
+                }*/
               }
               if (event.keyCode === this._userControlKeyMapping.forwardKey) {
                 event.preventDefault();
                 event.stopPropagation();
                 this.keys.forward = 1;
-                this.switchToAnimation('run');
+                this.switchToAnimation(ECharacterAnimation.walk, 1 + ((this._characterSpeed / this._characterMaxBackwardSpeed) * 0.1));
               }
               if (event.keyCode === this._userControlKeyMapping.backwardKey) {
                 event.preventDefault();
                 event.stopPropagation();
                 this.keys.backward = 1;
-                this.switchToAnimation('run');
+                this.switchToAnimation(ECharacterAnimation.walk, 1 + ((this._characterSpeed / this._characterMaxBackwardSpeed) * 0.1));
               }
             });
             window.addEventListener('keyup', (event) => {
+              if (this.killed) {
+                return;
+              }
               if (event.keyCode === this._userControlKeyMapping.leftKey) {
                 this.keys.left = 0;
-                if (!this.keys.forward && !this.keys.backward) {
-                  this.switchToAnimation('stand');
-                }
+                /* if (!this.keys.forward && !this.keys.backward) {
+                  this.switchToAnimation(ECharacterAnimation.idle);
+                }*/
               }
               if (event.keyCode === this._userControlKeyMapping.rightKey) {
                 this.keys.right = 0;
-                if (!this.keys.forward && !this.keys.backward) {
-                  this.switchToAnimation('stand');
-                }
+                /* if (!this.keys.forward && !this.keys.backward) {
+                  this.switchToAnimation(ECharacterAnimation.idle);
+                }*/
               }
               if (event.keyCode === this._userControlKeyMapping.forwardKey) {
                 this.keys.forward = 0;
                 if (!this.keys.backward) {
-                  this.switchToAnimation('stand');
+                  this.switchToAnimation(ECharacterAnimation.idle);
                 }
               }
               if (event.keyCode === this._userControlKeyMapping.backwardKey) {
                 this.keys.backward = 0;
                 if (!this.keys.forward) {
-                  this.switchToAnimation('stand');
+                  this.switchToAnimation(ECharacterAnimation.idle);
                 }
               }
             });
             this._gameRenderer.getScene().registerBeforeRender(() => {
+              if (this.killed) {
+                return;
+              }
               let delta = 0;
               if (this.keys.forward || this.keys.backward || this.keys.right || this.keys.left) {
                 delta = frameRenderClock.getCachedDelta() / 20;
@@ -262,7 +327,6 @@ export class Character extends BaseModel {
                     this._modelRoot.computeWorldMatrix()
                   );
                   this._modelRoot.moveWithCollisions(velocity);
-                  // console.log(Math.ceil(this._modelRoot.position.x) + ' ' + Math.ceil(this._modelRoot.position.z));
                 } else {
                   const posX = Math.sin(this._modelRoot.rotation.y) * this._characterSpeed * this._characterSpeedMultiplier * delta;
                   const posZ = Math.cos(this._modelRoot.rotation.y) * this._characterSpeed * this._characterSpeedMultiplier * delta;
@@ -302,6 +366,16 @@ export class Character extends BaseModel {
     } catch (e) {
       console.log(e);
     }
+  }
+
+  killCharacter(callback: Function = null) {
+    if (!this.killed) {
+      this.killed = true;
+      this.switchToAnimation(ECharacterAnimation.die, 1, false, callback);
+    }
+  }
+  isCharacterKilled() {
+    return this.killed;
   }
 
   private increaseCharacterSpeedForward() {

@@ -14,5 +14,10 @@ export class CharacterGalleryItem implements ICharacterGalleryItem {
     maxForwardSpeed: 0.4,
     maxBackwardSpeed: 0.04,
     rotateSpeed: 0.06
+  };
+  transform = {
+    scale: [],
+    position: [],
+    rotate: []
   }
 }
