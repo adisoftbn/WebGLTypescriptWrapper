@@ -45,7 +45,7 @@ export class GameRenderer implements IGameRenderer {
   protected _realPhysicsCollisions = true;
   protected _gravity = -9.81;
 
-  protected _gameMode = true;
+  protected _gameMode = null;
 
   constructor(canvasElement: string,
     graphicsOptions?: IRendererGraphicOptions) {
@@ -61,12 +61,12 @@ export class GameRenderer implements IGameRenderer {
 
   }
   public enterGameMode() {
-    if (!this._gameMode) {
+    if (!this._gameMode || this._gameMode === null) {
       this._gameMode = true;
       this._engine.runRenderLoop(() => {
         frameRenderClock.getDelta();
         this._scene.render();
-        console.log(2);
+        // console.log(2);
         if (!this._gameMode) {
           this._engine.stopRenderLoop();
         }
@@ -75,7 +75,7 @@ export class GameRenderer implements IGameRenderer {
   }
 
   public enterMenuMode() {
-    if (this._gameMode) {
+    if (this._gameMode || this._gameMode === null) {
       this._gameMode = false;
       const interval = setInterval(() => {
         frameRenderClock.getDelta();
@@ -83,8 +83,8 @@ export class GameRenderer implements IGameRenderer {
         if (this._gameMode) {
           clearInterval(interval);
         }
-        console.log(1);
-      }, 700);
+        // console.log(1);
+      }, 1);
     }
   }
 
