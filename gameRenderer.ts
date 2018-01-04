@@ -66,7 +66,6 @@ export class GameRenderer implements IGameRenderer {
       this._engine.runRenderLoop(() => {
         frameRenderClock.getDelta();
         this._scene.render();
-        // console.log(2);
         if (!this._gameMode) {
           this._engine.stopRenderLoop();
         }
@@ -83,7 +82,6 @@ export class GameRenderer implements IGameRenderer {
         if (this._gameMode) {
           clearInterval(interval);
         }
-        // console.log(1);
       }, 1);
     }
   }

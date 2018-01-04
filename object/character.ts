@@ -235,83 +235,7 @@ export class Character extends BaseModel {
         if (!this._modelLoaded) {
           this._modelLoaded = true;
           if (this._userControl && !this.killed) {
-            window.addEventListener('keypress', (event) => {
-              if (this.killed) {
-                return;
-              }
-              if (this._keyPressEvents[event.keyCode]) {
-                event.preventDefault();
-                event.stopPropagation();
-                this._keyPressEvents[event.keyCode].callback();
-              }
-            });
-            window.addEventListener('keydown', (event) => {
-              if (this.killed) {
-                return;
-              }
-              if (event.keyCode === this._userControlKeyMapping.leftKey) {
-                event.preventDefault();
-                event.stopPropagation();
-                this.keys.left = 1;
-                /* if (!this.keys.forward || this.keys.backward) {
-                  this.switchToAnimation(ECharacterAnimation.idle);
-                } else {
-                  this.switchToAnimation(ECharacterAnimation.moveLeft);
-                }*/
-              }
-              if (event.keyCode === this._userControlKeyMapping.rightKey) {
-                event.preventDefault();
-                event.stopPropagation();
-                this.keys.right = 1;
-                /* if (!this.keys.forward || this.keys.backward) {
-                  this.switchToAnimation(ECharacterAnimation.idle);
-                } else {
-                  this.switchToAnimation(ECharacterAnimation.moveRight);
-                }*/
-              }
-              if (event.keyCode === this._userControlKeyMapping.forwardKey) {
-                event.preventDefault();
-                event.stopPropagation();
-                this.keys.forward = 1;
-                this.switchToAnimation(ECharacterAnimation.walk, 1 + ((this._characterSpeed / this._characterMaxBackwardSpeed) * 0.1));
-              }
-              if (event.keyCode === this._userControlKeyMapping.backwardKey) {
-                event.preventDefault();
-                event.stopPropagation();
-                this.keys.backward = 1;
-                this.switchToAnimation(ECharacterAnimation.walk, 1 + ((this._characterSpeed / this._characterMaxBackwardSpeed) * 0.1));
-              }
-            });
-            window.addEventListener('keyup', (event) => {
-              if (this.killed) {
-                return;
-              }
-              if (event.keyCode === this._userControlKeyMapping.leftKey) {
-                this.keys.left = 0;
-                /* if (!this.keys.forward && !this.keys.backward) {
-                  this.switchToAnimation(ECharacterAnimation.idle);
-                }*/
-              }
-              if (event.keyCode === this._userControlKeyMapping.rightKey) {
-                this.keys.right = 0;
-                /* if (!this.keys.forward && !this.keys.backward) {
-                  this.switchToAnimation(ECharacterAnimation.idle);
-                }*/
-              }
-              if (event.keyCode === this._userControlKeyMapping.forwardKey) {
-                this.keys.forward = 0;
-                if (!this.keys.backward) {
-                  this.switchToAnimation(ECharacterAnimation.idle);
-                }
-              }
-              if (event.keyCode === this._userControlKeyMapping.backwardKey) {
-                this.keys.backward = 0;
-                if (!this.keys.forward) {
-                  this.switchToAnimation(ECharacterAnimation.idle);
-                }
-              }
-            });
-            this._gameRenderer.getScene().registerBeforeRender(() => {
+            this._modelRoot.registerBeforeRender(() => {
               if (this.killed) {
                 return;
               }
@@ -374,8 +298,78 @@ export class Character extends BaseModel {
       this.switchToAnimation(ECharacterAnimation.die, 1, false, callback);
     }
   }
+
   isCharacterKilled() {
     return this.killed;
+  }
+
+  public keyPressListener(event) {
+    if (this.killed) {
+      return;
+    }
+    if (this._keyPressEvents[event.keyCode]) {
+      event.preventDefault();
+      event.stopPropagation();
+      this._keyPressEvents[event.keyCode].callback();
+    }
+  }
+
+  public keyDownListener(event) {
+    if (this.killed) {
+      return;
+    }
+    if (event.keyCode === this._userControlKeyMapping.leftKey) {
+      event.preventDefault();
+      event.stopPropagation();
+      this.keys.left = 1;
+    }
+    if (event.keyCode === this._userControlKeyMapping.rightKey) {
+      event.preventDefault();
+      event.stopPropagation();
+      this.keys.right = 1;
+    }
+    if (event.keyCode === this._userControlKeyMapping.forwardKey) {
+      event.preventDefault();
+      event.stopPropagation();
+      this.keys.forward = 1;
+      this.switchToAnimation(ECharacterAnimation.walk, 1 + ((this._characterSpeed / this._characterMaxBackwardSpeed) * 0.1));
+    }
+    if (event.keyCode === this._userControlKeyMapping.backwardKey) {
+      event.preventDefault();
+      event.stopPropagation();
+      this.keys.backward = 1;
+      this.switchToAnimation(ECharacterAnimation.walk, 1 + ((this._characterSpeed / this._characterMaxBackwardSpeed) * 0.1));
+    }
+  }
+
+  public keyUpListener(event) {
+    if (this.killed) {
+      return;
+    }
+    if (event.keyCode === this._userControlKeyMapping.leftKey) {
+      this.keys.left = 0;
+      /* if (!this.keys.forward && !this.keys.backward) {
+        this.switchToAnimation(ECharacterAnimation.idle);
+      }*/
+    }
+    if (event.keyCode === this._userControlKeyMapping.rightKey) {
+      this.keys.right = 0;
+      /* if (!this.keys.forward && !this.keys.backward) {
+        this.switchToAnimation(ECharacterAnimation.idle);
+      }*/
+    }
+    if (event.keyCode === this._userControlKeyMapping.forwardKey) {
+      this.keys.forward = 0;
+      if (!this.keys.backward) {
+        this.switchToAnimation(ECharacterAnimation.idle);
+      }
+    }
+    if (event.keyCode === this._userControlKeyMapping.backwardKey) {
+      this.keys.backward = 0;
+      if (!this.keys.forward) {
+        this.switchToAnimation(ECharacterAnimation.idle);
+      }
+    }
   }
 
   private increaseCharacterSpeedForward() {
@@ -398,5 +392,15 @@ export class Character extends BaseModel {
       this._characterSpeed = this._characterMaxBackwardSpeed;
     }
   }
+
+  public destroy() {
+    if (this._model) {
+      this._model.dispose();
+      this._model = null;
+      this._modelRoot.dispose();
+      this._modelRoot = null;
+    }
+  }
+
 
 }

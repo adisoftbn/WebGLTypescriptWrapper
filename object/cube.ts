@@ -70,13 +70,17 @@ export class Cube extends BaseModel {
     this._model.material = this._modelMaterial;
     if (this._graphicsOptions.shadowEnabled && this._gameRenderer.getShadowGenerator()) {
       if (
-        this._graphicsOptions.shadowQuality === ERendererShadowQuality.medium ||
         this._graphicsOptions.shadowQuality === ERendererShadowQuality.high
       ) {
         this._model.receiveShadows = true;
       }
-      this._gameRenderer.getShadowGenerator().getShadowMap().renderList.push(this._model);
-      this._gameRenderer.getShadowGenerator().addShadowCaster(this._model);
+      if (
+        this._graphicsOptions.shadowQuality === ERendererShadowQuality.medium ||
+        this._graphicsOptions.shadowQuality === ERendererShadowQuality.high
+      ) {
+        this._gameRenderer.getShadowGenerator().getShadowMap().renderList.push(this._model);
+        this._gameRenderer.getShadowGenerator().addShadowCaster(this._model);
+      }
     }
     if (this._gameRenderer.isPhysicsEnabled()) {
       if (this._gameRenderer.isRealPhysicsCollisions()) {
@@ -110,6 +114,13 @@ export class Cube extends BaseModel {
       this._textureHeight = sizes['height'];
       this.buildModel();
     });
+  }
+
+  public destroy() {
+    if (this._model) {
+      this._model.dispose();
+      this._model = null;
+    }
   }
 
 }

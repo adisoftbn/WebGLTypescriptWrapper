@@ -69,4 +69,11 @@ export class Ground extends BaseModel {
     });
   }
 
+  public destroy() {
+    if (this._model) {
+      this._model.dispose();
+      this._model = null;
+    }
+  }
+
 }
