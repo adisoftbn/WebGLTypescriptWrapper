@@ -11,8 +11,8 @@ export class CharacterGalleryItem implements ICharacterGalleryItem {
     initialForwardSpeed: 0.02,
     initialBackwardSpeed: 0.01,
     speedIncreasePercent: 0.1,
-    maxForwardSpeed: 0.4,
-    maxBackwardSpeed: 0.04,
+    maxForwardSpeed: 0.2,
+    maxBackwardSpeed: 0.08,
     rotateSpeed: 0.06
   };
   transform = {

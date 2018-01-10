@@ -1,5 +1,5 @@
 export interface IUserControlAlternateKeys {
-  key: number;
+  key: any;
   onlyOnPress: boolean;
   callback: Function;
 }

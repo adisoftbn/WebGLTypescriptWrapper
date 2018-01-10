@@ -3,8 +3,17 @@ import { Vector3, SceneLoader, MeshBuilder, Mesh } from 'babylonjs';
 import { GameRenderer, IRendererGraphicOptions, RendererGraphicOptions, ERendererShadowQuality } from '../';
 import { BaseModel } from './baseModel';
 
-import { IUserControlKeyMapping, IUserControlAlternateKeys, INetworkChannel, ICharacterGalleryItem } from '../model';
+import {
+  IUserControlKeyMapping, IUserControlAlternateKeys, INetworkChannel, ICharacterGalleryItem,
+  JoystickEvent, JoystickEventName, JoystickEventType
+} from '../model';
 import { frameRenderClock } from '../frameRenderClock';
+
+export enum ECharacterEventType {
+  cellChange = 1
+}
+
+export type TCharacterCallback = (eventType: ECharacterEventType, data?: any) => void;
 
 export enum ECharacterAnimation {
   idle = 'idle',
@@ -22,6 +31,7 @@ export class Character extends BaseModel {
   protected _userControl = false;
   protected _userControlKeyMapping: IUserControlKeyMapping = null;
   protected _networkingChannel: INetworkChannel = null;
+  protected _characterEvent: TCharacterCallback = null;
 
   protected _characterAnimationSpeed = 0.8;
 
@@ -47,15 +57,26 @@ export class Character extends BaseModel {
   private killed = false;
 
   private keys = { left: 0, right: 0, forward: 0, backward: 0 };
+  private joystick = {
+    left: 0,
+    right: 0,
+    forward: 0,
+    backward: 0
+  };
+
+  private currentMovementCellX = -1000000;
+  private currentMovementCellY = -1000000;
+  private cellMoveTimeout = null;
 
   protected _keyPressEvents: IUserControlAlternateKeys[] = [];
 
 
   constructor(gameRenderer: GameRenderer, initialPosition: Vector3,
     userControlKeyMapping: IUserControlKeyMapping = null, networkingChannel: INetworkChannel = null,
-    graphicsOptions?: IRendererGraphicOptions) {
+    graphicsOptions?: IRendererGraphicOptions, characterEvent: TCharacterCallback = null) {
     super(gameRenderer);
     this._graphicsOptions = (graphicsOptions ? graphicsOptions : new RendererGraphicOptions);
+    this._characterEvent = characterEvent;
     this._initialPosition = initialPosition;
     this._modelRoot = MeshBuilder.CreateSphere('sphere', {
       diameterX: 3, diameterY: 10, diameterZ: 3
@@ -239,11 +260,64 @@ export class Character extends BaseModel {
               if (this.killed) {
                 return;
               }
-              let delta = 0;
-              if (this.keys.forward || this.keys.backward || this.keys.right || this.keys.left) {
-                delta = frameRenderClock.getCachedDelta() / 20;
+
+              const delta = (this.keys.forward > 0 || this.keys.backward > 0 || this.keys.right > 0 || this.keys.left > 0 ||
+                this.joystick.forward > 0 || this.joystick.backward > 0 || this.joystick.right > 0 || this.joystick.left > 0 ?
+                frameRenderClock.getCachedDelta() / 20 :
+                0
+              );
+
+              if (this.keys.right === 1 && this.joystick.right === 0) {
+                this._modelRoot.rotate(BABYLON.Axis.Y, this._characterRotateSpeed * delta, BABYLON.Space.LOCAL);
+              } else if (this.keys.right === 0 && this.joystick.right > 0) {
+                this._modelRoot.rotate(BABYLON.Axis.Y, this._characterRotateSpeed * this.joystick.right * delta, BABYLON.Space.LOCAL);
               }
-              if (this.keys.forward === 1) {
+              if (this.keys.left === 1 && this.joystick.left === 0) {
+                this._modelRoot.rotate(BABYLON.Axis.Y, -this._characterRotateSpeed * delta, BABYLON.Space.LOCAL);
+              } else if (this.keys.left === 0 && this.joystick.left > 0) {
+                this._modelRoot.rotate(BABYLON.Axis.Y, -this._characterRotateSpeed * this.joystick.left * delta, BABYLON.Space.LOCAL);
+              }
+              /*if (this.keys.right === 0.5) {
+                this._modelRoot.rotate(BABYLON.Axis.Y, (this._characterRotateSpeed * delta) * 0.7, BABYLON.Space.LOCAL);
+              }
+              if (this.keys.left === 0.5) {
+                this._modelRoot.rotate(BABYLON.Axis.Y, (-this._characterRotateSpeed * delta) * 0.7, BABYLON.Space.LOCAL);
+              }*/
+
+              if (this.joystick.forward > 0 && this.keys.forward === 0) {
+                this.increaseCharacterSpeedForward();
+                if (this._gameRenderer.isPhysicsEnabled()) {
+                  const velocity = BABYLON.Vector3.TransformNormal(
+                    new BABYLON.Vector3(0, 0, this._characterSpeed * this.joystick.forward * this._characterSpeedMultiplier * delta),
+                    this._modelRoot.computeWorldMatrix()
+                  );
+                  this._modelRoot.moveWithCollisions(velocity);
+                } else {
+                  const posX = Math.sin(this._modelRoot.rotation.y) * this._characterSpeed * this.joystick.forward
+                    * this._characterSpeedMultiplier * delta;
+                  const posZ = Math.cos(this._modelRoot.rotation.y) * this._characterSpeed * this.joystick.forward
+                    * this._characterSpeedMultiplier * delta;
+                  this._modelRoot.position.x += posX;
+                  this._modelRoot.position.z += posZ;
+                }
+              } else if (this.joystick.backward > 0 && this.keys.backward === 0) {
+                this.fixCharacterSpeedBackward();
+                if (this._gameRenderer.isPhysicsEnabled()) {
+                  const velocity = BABYLON.Vector3.TransformNormal(
+                    new BABYLON.Vector3(0, 0, this._characterSpeed * this.joystick.backward * this._characterSpeedMultiplier * delta),
+                    this._modelRoot.computeWorldMatrix()
+                  );
+                  const newVelocity = velocity.negate();
+                  this._modelRoot.moveWithCollisions(newVelocity);
+                } else {
+                  const posX = Math.sin(this._modelRoot.rotation.y) * this._characterSpeed * this.joystick.backward *
+                    this._characterSpeedMultiplier * delta;
+                  const posZ = Math.cos(this._modelRoot.rotation.y) * this._characterSpeed * this.joystick.backward *
+                    this._characterSpeedMultiplier * delta;
+                  this._modelRoot.position.x -= posX;
+                  this._modelRoot.position.z -= posZ;
+                }
+              } else if (this.keys.forward === 1 && this.joystick.forward === 0) {
                 this.increaseCharacterSpeedForward();
                 if (this._gameRenderer.isPhysicsEnabled()) {
                   const velocity = BABYLON.Vector3.TransformNormal(
@@ -257,7 +331,7 @@ export class Character extends BaseModel {
                   this._modelRoot.position.x += posX;
                   this._modelRoot.position.z += posZ;
                 }
-              } else if (this.keys.backward === 1) {
+              } else if (this.keys.backward === 1 && this.joystick.backward === 0) {
                 this.fixCharacterSpeedBackward();
                 if (this._gameRenderer.isPhysicsEnabled()) {
                   const velocity = BABYLON.Vector3.TransformNormal(
@@ -273,14 +347,17 @@ export class Character extends BaseModel {
                   this._modelRoot.position.z -= posZ;
                 }
               }
-              if (this.keys.forward === 0 && this.keys.backward === 0 && this._characterSpeed > 0) {
+              if (
+                this.keys.forward === 0 && this.keys.backward === 0 && this.joystick.forward === 0 &&
+                this.joystick.backward === 0 && this._characterSpeed > 0
+              ) {
                 this._characterSpeed = 0;
-              }
-              if (this.keys.right === 1) {
-                this._modelRoot.rotate(BABYLON.Axis.Y, this._characterRotateSpeed * delta, BABYLON.Space.LOCAL);
-              }
-              if (this.keys.left === 1) {
-                this._modelRoot.rotate(BABYLON.Axis.Y, -this._characterRotateSpeed * delta, BABYLON.Space.LOCAL);
+              } else {
+                this.checkMovementCellChange();
+                clearTimeout(this.cellMoveTimeout);
+                this.cellMoveTimeout = setTimeout(() => {
+                  this.checkMovementCellChange();
+                });
               }
             });
           }
@@ -289,6 +366,21 @@ export class Character extends BaseModel {
       }
     } catch (e) {
       console.log(e);
+    }
+  }
+
+  checkMovementCellChange() {
+    const newCellX = Math.ceil(this._modelRoot.position.x);
+    const newCellY = Math.ceil(this._modelRoot.position.z);
+    if (this.currentMovementCellX !== newCellX || this.currentMovementCellY !== newCellY) {
+      this.currentMovementCellX = newCellX;
+      this.currentMovementCellY = newCellY;
+      if (this._characterEvent) {
+        this._characterEvent(ECharacterEventType.cellChange, {
+          x: newCellX,
+          y: newCellY
+        });
+      }
     }
   }
 
@@ -303,13 +395,41 @@ export class Character extends BaseModel {
     return this.killed;
   }
 
+  public joystickEventListener(event: JoystickEvent) {
+    if (event.type === JoystickEventType.start) {
+      if (event.name === JoystickEventName.forward) {
+        this.joystick.forward = event.power;
+      } else if (event.name === JoystickEventName.backward) {
+        this.joystick.backward = event.power;
+      } else if (event.name === JoystickEventName.left) {
+        this.joystick.left = event.power;
+      } else if (event.name === JoystickEventName.right) {
+        this.joystick.right = event.power;
+      }
+    } else if (event.type === JoystickEventType.end) {
+      if (event.name === JoystickEventName.forward) {
+        this.joystick.forward = 0;
+      } else if (event.name === JoystickEventName.backward) {
+        this.joystick.backward = 0;
+      } else if (event.name === JoystickEventName.left) {
+        this.joystick.left = 0;
+      } else if (event.name === JoystickEventName.right) {
+        this.joystick.right = 0;
+      }
+    }
+  }
+
   public keyPressListener(event) {
     if (this.killed) {
       return;
     }
     if (this._keyPressEvents[event.keyCode]) {
-      event.preventDefault();
-      event.stopPropagation();
+      if (event.preventDefault) {
+        event.preventDefault();
+      }
+      if (event.stopPropagation) {
+        event.stopPropagation();
+      }
       this._keyPressEvents[event.keyCode].callback();
     }
   }
@@ -318,27 +438,45 @@ export class Character extends BaseModel {
     if (this.killed) {
       return;
     }
-    if (event.keyCode === this._userControlKeyMapping.leftKey) {
-      event.preventDefault();
-      event.stopPropagation();
-      this.keys.left = 1;
-    }
-    if (event.keyCode === this._userControlKeyMapping.rightKey) {
-      event.preventDefault();
-      event.stopPropagation();
-      this.keys.right = 1;
-    }
-    if (event.keyCode === this._userControlKeyMapping.forwardKey) {
-      event.preventDefault();
-      event.stopPropagation();
-      this.keys.forward = 1;
-      this.switchToAnimation(ECharacterAnimation.walk, 1 + ((this._characterSpeed / this._characterMaxBackwardSpeed) * 0.1));
-    }
-    if (event.keyCode === this._userControlKeyMapping.backwardKey) {
-      event.preventDefault();
-      event.stopPropagation();
-      this.keys.backward = 1;
-      this.switchToAnimation(ECharacterAnimation.walk, 1 + ((this._characterSpeed / this._characterMaxBackwardSpeed) * 0.1));
+    if (
+      event.keyCode === 'internal_forward' || event.keyCode === 'internal_backward' ||
+      event.keyCode === 'internal_left' || event.keyCode === 'internal_right'
+    ) {
+      if (event.keyCode === 'internal_forward') {
+        this.keys.forward = 1;
+      }
+      if (event.keyCode === 'internal_backward') {
+        this.keys.backward = 1;
+      }
+      if (event.keyCode === 'internal_left') {
+        this.keys.left = 1;
+      }
+      if (event.keyCode === 'internal_right') {
+        this.keys.right = 1;
+      }
+    } else {
+      if (event.keyCode === this._userControlKeyMapping.leftKey) {
+        event.preventDefault();
+        event.stopPropagation();
+        this.keys.left = 1;
+      }
+      if (event.keyCode === this._userControlKeyMapping.rightKey) {
+        event.preventDefault();
+        event.stopPropagation();
+        this.keys.right = 1;
+      }
+      if (event.keyCode === this._userControlKeyMapping.forwardKey) {
+        event.preventDefault();
+        event.stopPropagation();
+        this.keys.forward = 1;
+        this.switchToAnimation(ECharacterAnimation.walk, 1 + ((this._characterSpeed / this._characterMaxBackwardSpeed) * 0.1));
+      }
+      if (event.keyCode === this._userControlKeyMapping.backwardKey) {
+        event.preventDefault();
+        event.stopPropagation();
+        this.keys.backward = 1;
+        this.switchToAnimation(ECharacterAnimation.walk, 1 + ((this._characterSpeed / this._characterMaxBackwardSpeed) * 0.1));
+      }
     }
   }
 
@@ -346,28 +484,46 @@ export class Character extends BaseModel {
     if (this.killed) {
       return;
     }
-    if (event.keyCode === this._userControlKeyMapping.leftKey) {
-      this.keys.left = 0;
-      /* if (!this.keys.forward && !this.keys.backward) {
-        this.switchToAnimation(ECharacterAnimation.idle);
-      }*/
-    }
-    if (event.keyCode === this._userControlKeyMapping.rightKey) {
-      this.keys.right = 0;
-      /* if (!this.keys.forward && !this.keys.backward) {
-        this.switchToAnimation(ECharacterAnimation.idle);
-      }*/
-    }
-    if (event.keyCode === this._userControlKeyMapping.forwardKey) {
-      this.keys.forward = 0;
-      if (!this.keys.backward) {
-        this.switchToAnimation(ECharacterAnimation.idle);
+    if (
+      event.keyCode === 'internal_forward' || event.keyCode === 'internal_backward' ||
+      event.keyCode === 'internal_left' || event.keyCode === 'internal_right'
+    ) {
+      if (event.keyCode === 'internal_forward') {
+        this.keys.forward = 0;
       }
-    }
-    if (event.keyCode === this._userControlKeyMapping.backwardKey) {
-      this.keys.backward = 0;
-      if (!this.keys.forward) {
-        this.switchToAnimation(ECharacterAnimation.idle);
+      if (event.keyCode === 'internal_backward') {
+        this.keys.backward = 0;
+      }
+      if (event.keyCode === 'internal_left') {
+        this.keys.left = 0;
+      }
+      if (event.keyCode === 'internal_right') {
+        this.keys.right = 0;
+      }
+    } else {
+      if (event.keyCode === this._userControlKeyMapping.leftKey) {
+        this.keys.left = 0;
+        /* if (!this.keys.forward && !this.keys.backward) {
+          this.switchToAnimation(ECharacterAnimation.idle);
+        }*/
+      }
+      if (event.keyCode === this._userControlKeyMapping.rightKey) {
+        this.keys.right = 0;
+        /* if (!this.keys.forward && !this.keys.backward) {
+          this.switchToAnimation(ECharacterAnimation.idle);
+        }*/
+      }
+      if (event.keyCode === this._userControlKeyMapping.forwardKey) {
+        this.keys.forward = 0;
+        if (!this.keys.backward) {
+          this.switchToAnimation(ECharacterAnimation.idle);
+        }
+      }
+      if (event.keyCode === this._userControlKeyMapping.backwardKey) {
+        this.keys.backward = 0;
+        if (!this.keys.forward) {
+          this.switchToAnimation(ECharacterAnimation.idle);
+        }
       }
     }
   }

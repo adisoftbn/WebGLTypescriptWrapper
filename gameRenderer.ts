@@ -37,9 +37,9 @@ export class GameRenderer implements IGameRenderer {
   private _textureGallery: TextureGalleryManager;
 
   public texturesQuality = 'hq'; // hq/mq/lq
-  public diffuseColor: Color3 = new Color3(0.8, 0.8, 0.8);
-  public specularColor: Color3 = new Color3(0.3, 0.3, 0.3);
-  public ambientColor: Color3 = new Color3(0.5, 0.5, 0.5);
+  public diffuseColor: Color3 = null;
+  public specularColor: Color3 = null;
+  public ambientColor: Color3 = null;
 
   protected _physicsEnabled = true;
   protected _realPhysicsCollisions = true;
@@ -47,19 +47,28 @@ export class GameRenderer implements IGameRenderer {
 
   protected _gameMode = null;
 
+  resetEnvironmentColors() {
+    this.diffuseColor = new Color3(0.8, 0.8, 0.8);
+    this.specularColor = new Color3(0.1, 0.1, 0.1);
+    this.ambientColor = new Color3(0.5, 0.5, 0.5);
+  }
+
   constructor(canvasElement: string,
     graphicsOptions?: IRendererGraphicOptions) {
+    this.resetEnvironmentColors();
     this._canvas = <HTMLCanvasElement>document.getElementById(canvasElement);
     this._graphicsOptions = (graphicsOptions ? graphicsOptions : new RendererGraphicOptions);
     this._engine = new Engine(this._canvas, true);
+    this._engine.setHardwareScalingLevel(window.innerHeight / 480.0)
     this._engine.enableOfflineSupport = false;
     this._characterGallery = new CharacterGalleryManager(this);
     this._textureGallery = new TextureGalleryManager(this);
     window.addEventListener('resize', () => {
       this._engine.resize();
+      this._engine.setHardwareScalingLevel(window.innerHeight / 480.0)
     });
-
   }
+
   public enterGameMode() {
     if (!this._gameMode || this._gameMode === null) {
       this._gameMode = true;
@@ -118,6 +127,7 @@ export class GameRenderer implements IGameRenderer {
         this._scene.collisionsEnabled = true;
       }
     }
+    this._scene.getPhysicsEngine().setTimeStep(1 / 20);
 
     this._scene.shadowsEnabled = this._graphicsOptions.shadowEnabled;
     if (this._graphicsOptions.shadowEnabled) {

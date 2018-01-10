@@ -6,3 +6,5 @@ export * from './userControlKeyMapping.interface';
 
 export * from './textureGalleryItem.interface';
 export * from './textureGalleryItem';
+
+export * from './joystickEvent.interface';
